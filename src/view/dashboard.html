@@ -1,0 +1,258 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <title>TabFlo - Dashboard</title>
+  <link rel="stylesheet" href="dashboard.css">
+</head>
+<body>
+  <div id="app">
+    <header>
+      <h1>TabFlo</h1>
+      <div class="header-controls">
+        <button id="sidebarToggleBtn" class="mode-toggle-btn only-vertical" title="Menú (Vertical)">
+          <span>☰</span> <span>Menú</span>
+        </button>
+        <div class="search-bar">
+          <input type="text" id="searchInput" placeholder="Buscar pestañas (fuzzy)…">
+        </div>
+        <button id="compactModeBtn" class="mode-toggle-btn" title="Modo compacto (Alt+M)">
+          <span>⊞</span> <span>Compacto</span>
+        </button>
+        <button id="verticalViewBtn" class="mode-toggle-btn" title="Vista vertical (Alt+V)">
+          <span>📐</span> <span>Vertical</span>
+        </button>
+        <button id="shortcutsBtn" class="mode-toggle-btn" title="Atajos de teclado (?)">
+          <span>⌨</span>
+        </button>
+        <div class="settings-menu">
+          <button id="settingsBtn" class="mode-toggle-btn" title="Configuración & Debug">
+            <span>⚙️</span>
+          </button>
+          <div id="settingsDropdown" class="settings-dropdown hidden">
+            <h3>Configuración & Debug</h3>
+            <div class="debug-controls">
+              <label class="toggle">
+                <input type="checkbox" id="autoUngroupToggle" />
+                <span>Eliminar grupos al iniciar</span>
+              </label>
+              <label class="toggle">
+                <input type="checkbox" id="autoGroupDomainToggle" />
+                <span>Agrupar por dominio/categoría (auto)</span>
+              </label>
+              <label class="toggle">
+                <input type="checkbox" id="autoGroupSemanticToggle" />
+                <span>Autoagrupar por tema/proyecto (local)</span>
+              </label>
+              <label class="toggle">
+                <input type="checkbox" id="autoSuspendSemanticToggle" />
+                <span>Suspender pestañas por cluster (opcional)</span>
+              </label>
+              <label class="toggle">
+                <input type="checkbox" id="autoGroupSemanticNotifyToggle" />
+                <span>Notificar agrupación automática</span>
+              </label>
+              <label class="toggle">
+                <input type="checkbox" id="debugToggle" />
+                <span>Modo DEBUG</span>
+              </label>
+              <button id="runDiagnostics" class="btn-ghost full-width">Ejecutar Diagnósticos</button>
+              <div class="form-group" style="margin-top:10px;">
+                <label>Excluir dominios de "Suspender Inactivas"</label>
+                <div style="display:flex; gap:6px;">
+                  <input type="text" id="suspendExclInput" placeholder="ej. youtube.com" style="flex:1;">
+                  <button id="addSuspendExclBtn" class="btn-ghost btn-sm">Añadir</button>
+                </div>
+                <ul id="suspendExclList" class="list-container" style="margin-top:6px;"></ul>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+      <div id="diagnostics-summary"></div>
+    </header>
+
+    <main>
+      <!-- Barra de multi-selección -->
+      <div id="multiSelectBar" class="multi-select-bar hidden">
+        <span id="selectedCount">0 seleccionadas</span>
+        <button id="multiMoveBtn" class="btn-ghost btn-sm">Mover a ventana…</button>
+        <button id="multiNewWindowBtn" class="btn-ghost btn-sm">Nueva ventana</button>
+        <button id="multiGroupBtn" class="btn-ghost btn-sm">Agrupar</button>
+        <button id="multiPinBtn" class="btn-ghost btn-sm" title="Fijar pestañas seleccionadas">Fijar</button>
+        <button id="multiUnpinBtn" class="btn-ghost btn-sm" title="Desfijar pestañas seleccionadas">Desfijar</button>
+        <button id="multiCloseBtn" class="btn-ghost btn-sm btn-danger-ghost">Cerrar</button>
+        <button id="multiClearBtn" class="btn-ghost btn-sm">Deseleccionar</button>
+      </div>
+
+      <div class="dashboard-grid">
+        <aside class="sidebar">
+          <section id="sessions-container">
+            <h2>Sesiones Guardadas</h2>
+            <div id="sessionsList" class="list-container"></div>
+            <div class="session-actions">
+              <button id="saveSessionBtn" class="btn-primary full-width">Guardar Sesión Actual</button>
+              <div class="session-backup-row">
+                <button id="exportSessionsBtn" class="btn-ghost btn-sm" title="Exportar sesiones">📤 Exportar</button>
+                <button id="importSessionsBtn" class="btn-ghost btn-sm" title="Importar sesiones">📥 Importar</button>
+              </div>
+              <input type="file" id="importSessionsFile" accept=".json" style="display:none">
+            </div>
+          </section>
+
+          <section id="rules-container">
+            <h2>Reglas de Auto-Agrupación</h2>
+            <div id="rulesList" class="list-container"></div>
+            <button id="addRuleBtn" class="btn-primary full-width">+ Nueva Regla</button>
+            <div class="rules-backup-row">
+              <button id="exportRulesBtn" class="btn-ghost btn-sm" title="Exportar reglas JSON">📤 Exportar</button>
+              <button id="importRulesBtn" class="btn-ghost btn-sm" title="Importar reglas JSON">📥 Importar</button>
+              <button id="resetRulesBtn" class="btn-ghost btn-sm" title="Restaurar reglas por defecto">🔄 Reset</button>
+            </div>
+            <input type="file" id="importRulesFile" accept=".json" style="display:none">
+          </section>
+
+          <!-- Stats de Memoria -->
+          <section id="memory-container">
+            <h2>Stats de Memoria</h2>
+            <div class="memory-stats">
+              <div id="memoryInfo" class="memory-info"></div>
+            </div>
+          </section>
+
+        </aside>
+
+        <div class="content">
+          <section id="groups-container">
+            <div class="section-header">
+              <h2>Grupos de Pestañas</h2>
+              <span class="badge-count" id="groupCount">0 Grupos</span>
+            </div>
+            <input type="text" id="groupSearchInput" class="group-search-input" placeholder="Buscar en grupos…">
+            <div id="groupsList" class="preview-grid"></div>
+          </section>
+
+          <!-- Sección de Ventanas -->
+          <section id="windows-container">
+            <div class="section-header">
+              <h2>Ventanas Abiertas</h2>
+              <span class="badge-count" id="windowCount">0 Ventanas</span>
+            </div>
+            <div id="windowsList" class="windows-list"></div>
+          </section>
+
+          <section id="tabs-container">
+            <div class="section-header">
+              <h2>Pestañas Abiertas</h2>
+              <div class="quick-actions" style="margin-left: auto; margin-right: 1rem; display: flex; gap: 0.5rem;">
+                <button id="selectAllBtn" class="btn-ghost" style="padding: 4px 8px; font-size: 0.8rem;">Seleccionar Todo</button>
+                <button id="groupByDomainBtn" class="btn-ghost" style="padding: 4px 8px; font-size: 0.8rem;">Agrupar por Dominio</button>
+                <button id="closeDuplicatesBtn" class="btn-ghost" style="padding: 4px 8px; font-size: 0.8rem;">Cerrar Duplicadas</button>
+                <button id="suspendInactiveBtn" class="btn-ghost" style="padding: 4px 8px; font-size: 0.8rem;" title="Libera memoria RAM">Suspender Inactivas</button>
+                <button id="muteOthersBtn" class="btn-ghost" style="padding: 4px 8px; font-size: 0.8rem;" title="Silencia todo excepto la activa">Silenciar Otras</button>
+              </div>
+              <div id="filterChips" class="filter-chips">
+                <button class="chip" data-flag="currentWindow" title="Solo pestañas de esta ventana">Esta ventana</button>
+                <button class="chip" data-flag="pinned" title="Solo pestañas fijadas">Fijadas</button>
+                <button class="chip" data-flag="audible" title="Solo pestañas con audio">Sonando</button>
+                <button class="chip" data-flag="discarded" title="Solo pestañas suspendidas">Suspendidas</button>
+              </div>
+              <span class="badge-count" id="tabCount">0 Pestañas</span>
+            </div>
+            <div id="tabsList" class="preview-grid"></div>
+          </section>
+
+          <!-- Sección nueva: Árbol animado de historial/pestañas -->
+          <section id="tree-container">
+            <div class="section-header">
+              <h2>Árbol de Pestañas e Historial</h2>
+              <div class="quick-actions" style="margin-left:auto; display:flex; gap:8px;">
+                <button id="treeRefreshBtn" class="btn-ghost" title="Actualizar">↻ Actualizar</button>
+                <button id="treeExpandAllBtn" class="btn-ghost" title="Expandir todo">＋ Expandir</button>
+                <button id="treeCollapseAllBtn" class="btn-ghost" title="Colapsar todo">－ Colapsar</button>
+                <button id="treeClearLocalBtn" class="btn-ghost" title="Limpiar historial local">🧹 Limpiar Local</button>
+              </div>
+            </div>
+            <div class="tree-tabs" style="display:none;">
+              <button class="tree-tab active" data-tree-tab="date">Por fecha</button>
+            </div>
+            <div class="tree-controls" style="margin-bottom: 12px; display: flex; gap: 8px;">
+              <input type="text" id="treeSearchInput" placeholder="Filtrar historial (título, URL o dominio)…" style="flex:1; padding: 8px 12px; background: rgba(255,255,255,0.05); border: 1px solid var(--glass-border); border-radius: var(--radius-sm); color: var(--text-main); font-size: 0.85rem; outline: none;">
+            </div>
+            <div id="treeViews">
+              <div id="treeByDate" class="tree-view active"></div>
+            </div>
+          </section>
+        </div>
+      </div>
+    </main>
+
+    <!-- Toast container -->
+    <div id="toastContainer" class="toast-container"></div>
+
+    <!-- Keyboard shortcuts panel -->
+    <div id="shortcutsPanel" class="shortcuts-panel">
+      <h3>Atajos de teclado</h3>
+      <div class="shortcut-row"><span>Buscar (fuzzy)</span><kbd class="kbd">Alt+F</kbd></div>
+      <div class="shortcut-row"><span>Vista vertical</span><kbd class="kbd">Alt+V</kbd></div>
+      <div class="shortcut-row"><span>Modo compacto</span><kbd class="kbd">Alt+M</kbd></div>
+      <div class="shortcut-row"><span>Guardar sesión</span><kbd class="kbd">Alt+S</kbd></div>
+      <div class="shortcut-row"><span>Recargar datos</span><kbd class="kbd">Alt+R</kbd></div>
+      <div class="shortcut-row"><span>Seleccionar todo</span><kbd class="kbd">Alt+A</kbd></div>
+      <div class="shortcut-row"><span>Mostrar atajos</span><kbd class="kbd">?</kbd></div>
+      <hr style="border-color: var(--glass-border); margin: 8px 0;">
+      <h3>Atajos globales (Chrome)</h3>
+      <div class="shortcut-row"><span>Abrir Dashboard</span><kbd class="kbd">Alt+Shift+D</kbd></div>
+      <div class="shortcut-row"><span>Guardar sesión</span><kbd class="kbd">Alt+Shift+S</kbd></div>
+      <div class="shortcut-row"><span>Mover izquierda</span><kbd class="kbd">Alt+Shift+←</kbd></div>
+      <div class="shortcut-row"><span>Mover derecha</span><kbd class="kbd">Alt+Shift+→</kbd></div>
+    </div>
+
+    <!-- Modal para editar/crear regla -->
+    <div id="ruleModal" class="modal-overlay hidden">
+      <div class="modal-content">
+        <h3 id="ruleModalTitle">Nueva Regla</h3>
+        <div class="form-group">
+          <label>Nombre del grupo</label>
+          <input type="text" id="ruleGroupName" placeholder="Ej: Desarrollo">
+        </div>
+        <div class="form-group">
+          <label>Patrones (separados por coma)</label>
+          <input type="text" id="rulePatterns" placeholder="Ej: github.com, gitlab.com">
+        </div>
+        <div class="form-group">
+          <label>Color</label>
+          <select id="ruleColor">
+            <option value="grey">Gris</option>
+            <option value="blue">Azul</option>
+            <option value="red">Rojo</option>
+            <option value="yellow">Amarillo</option>
+            <option value="green">Verde</option>
+            <option value="pink">Rosa</option>
+            <option value="purple">Púrpura</option>
+            <option value="cyan">Cian</option>
+            <option value="orange">Naranja</option>
+          </select>
+        </div>
+        <div class="modal-actions">
+          <button id="ruleModalSave" class="btn-primary">Guardar</button>
+          <button id="ruleModalCancel" class="btn-ghost">Cancelar</button>
+        </div>
+        <input type="hidden" id="ruleEditId" value="">
+      </div>
+    </div>
+
+    <!-- Modal para mover a ventana -->
+    <div id="windowModal" class="modal-overlay hidden">
+      <div class="modal-content">
+        <h3>Mover a ventana</h3>
+        <div id="windowModalList" class="window-modal-list"></div>
+        <div class="modal-actions">
+          <button id="windowModalCancel" class="btn-ghost">Cancelar</button>
+        </div>
+      </div>
+    </div>
+  </div>
+  <script type="module" src="dashboard.js"></script>
+</body>
+</html>

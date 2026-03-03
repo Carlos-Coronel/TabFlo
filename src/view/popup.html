@@ -1,0 +1,56 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <title>TabFlo</title>
+  <link rel="stylesheet" href="popup.css">
+</head>
+<body>
+  <div class="popup">
+    <h1>TabFlo</h1>
+    
+    <div class="quick">
+      <input type="text" id="q" placeholder="Buscar procesos, pestañas…" />
+      <button id="openDashboard" class="btn-primary">Dashboard</button>
+    </div>
+    
+    <div class="stats-panel">
+      <div class="chart-container">
+        <canvas id="ramChart" width="120" height="60"></canvas>
+      </div>
+      <div class="tab-count-bar">
+        <span id="tabCountBadge" class="tab-count-badge">0 pestañas</span>
+        <span id="memoryBadge" class="memory-badge">RAM: ...</span>
+      </div>
+    </div>
+
+    <div class="controls-bar">
+      <span>Ordenar por:</span>
+      <button id="sortRam" class="btn-sort active">RAM ↓</button>
+      <button id="sortCpu" class="btn-sort">CPU ↓</button>
+      <label class="toggle" style="margin-left:auto;">
+        <input type="checkbox" id="autoGroupDomainTogglePopup" />
+        <span style="font-size:12px;">Agrupar por dominio</span>
+      </label>
+    </div>
+
+    <div class="controls-bar">
+      <label class="toggle">
+        <input type="checkbox" id="autoGroupSemanticTogglePopup" />
+        <span style="font-size:12px;">Autoagrupar por tema</span>
+      </label>
+      <label class="toggle" style="margin-left:auto;">
+        <input type="checkbox" id="autoSuspendSemanticTogglePopup" />
+        <span style="font-size:12px;">Suspender por cluster</span>
+      </label>
+    </div>
+
+    <div class="list-container" id="scrollContainer">
+      <div id="results" class="results-list"></div>
+    </div>
+    
+  </div>
+  <!-- Canvas JS o librerías externas no permitidas en vanilla, así que dibujaremos con 2D context nativo en popup.js -->
+  <script type="module" src="popup.js"></script>
+</body>
+</html>

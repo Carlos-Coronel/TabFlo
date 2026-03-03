@@ -1,0 +1,78 @@
+{
+  "manifest_version": 3,
+  "name": "TabFlo",
+  "version": "2.0.0",
+  "description": "Gestión inteligente de pestañas con organización automática, multi-selección, búsqueda fuzzy, stats de memoria y dashboard profesional.",
+  "permissions": [
+    "tabs",
+    "storage",
+    "tabGroups",
+    "sessions",
+    "notifications",
+    "alarms",
+    "system.memory",
+    "management",
+    "bookmarks",
+    "offscreen",
+    "scripting"
+  ],
+  "host_permissions": [
+    "http://*/*",
+    "https://*/*"
+  ],
+  "background": {
+    "service_worker": "src/controller/background.js",
+    "type": "module"
+  },
+  "action": {
+    "default_popup": "src/view/popup.html",
+    "default_title": "Abrir Dashboard de Pestañas"
+  },
+  "icons": {
+    "48": "icons/icon48.png"
+  },
+  "content_security_policy": {
+    "extension_pages": "script-src 'self' 'wasm-unsafe-eval'; object-src 'self'"
+  },
+  "options_page": "src/view/dashboard.html",
+  "commands": {
+    "open-dashboard": {
+      "description": "Abrir el dashboard de TabFlo"
+    },
+    "save-session": {
+      "description": "Guardar sesión actual de pestañas"
+    },
+    "move-tab-left": {
+      "suggested_key": { "default": "Alt+Shift+Left" },
+      "description": "Mover pestaña activa a la izquierda"
+    },
+    "move-tab-right": {
+      "suggested_key": { "default": "Alt+Shift+Right" },
+      "description": "Mover pestaña activa a la derecha"
+    }
+  },
+  "web_accessible_resources": [
+    {
+      "resources": [
+        "src/assets/models/all-MiniLM-L6-v2/config.json",
+        "src/assets/models/all-MiniLM-L6-v2/model.onnx",
+        "src/assets/models/all-MiniLM-L6-v2/special_tokens_map.json",
+        "src/assets/models/all-MiniLM-L6-v2/tokenizer.json",
+        "src/assets/models/all-MiniLM-L6-v2/tokenizer_config.json",
+        "src/assets/models/all-MiniLM-L6-v2/vocab.txt",
+        "src/assets/models/all-MiniLM-L6-v2/onnx/*",
+        "src/vendor/onnxruntime/ort-wasm.wasm",
+        "src/vendor/onnxruntime/ort-wasm-simd.wasm",
+        "src/vendor/onnxruntime/ort-wasm-threaded.wasm",
+        "src/vendor/onnxruntime/ort-wasm-simd-threaded.wasm",
+        "src/vendor/transformers/dist/*",
+        "src/vendor/transformers/transformers.js",
+        "src/vendor/transformers/transformers.min.js",
+        "src/controller/offscreen.html",
+        "src/controller/offscreen.js",
+        "icons/*"
+      ],
+      "matches": ["<all_urls>"]
+    }
+  ]
+}

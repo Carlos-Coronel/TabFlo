@@ -1,0 +1,79 @@
+# Archivos y carpetas generales
+node_modules/
+dist/
+build/
+out/
+tmp/
+temp/
+.cache/
+.parcel-cache/
+.sass-cache/
+.eslintcache
+coverage/
+
+# Logs
+logs/
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+
+# Sistemas operativos
+.DS_Store
+Thumbs.db
+ehthumbs.db
+Desktop.ini
+
+# Entornos/credenciales locales
+.env
+.env.*
+.env.local
+.env.development.local
+.env.test.local
+.env.production.local
+
+# IDEs/editores (JetBrains/WebStorm)
+# Ignora todo dentro de .idea pero permite versionar configuraciones útiles del proyecto
+.idea/*
+!.idea/modules.xml
+!.idea/vcs.xml
+!.idea/jsonSchemas.xml
+!.idea/codeStyles/
+!.idea/inspectionProfiles/
+!.idea/runConfigurations/
+*.iml
+.vscode/
+
+# Cobertura/herramientas
+.nyc_output/
+lcov.info
+
+# Paquetes/archivos temporales
+*.tgz
+*.zip
+*.tar
+*.tar.gz
+
+# Gestores de paquetes
+package-lock.json
+yarn.lock
+pnpm-lock.yaml
+
+# Chrome Extension
+*.crx
+*.pem
+
+# Cachés de pruebas
+.jest/
+.mocha/
+
+# Artefactos varios
+*.pid
+*.seed
+*.orig
+*.rej
+
+# Notas:
+# - No se ignoran por patrón archivos .wasm ni modelos (.onnx) para este proyecto
+#   los versiona en src/vendor y src/assets para funcionar en modo offline.
