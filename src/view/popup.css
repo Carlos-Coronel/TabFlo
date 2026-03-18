@@ -139,6 +139,37 @@ body {
   filter: brightness(0.95);
 }
 
+.btn-ghost {
+  background: transparent;
+  color: var(--text-muted);
+  border: 1px solid var(--glass-border);
+  padding: 8px 12px;
+  border-radius: var(--radius-sm);
+  font-size: 0.8rem;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all var(--transition-normal);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+}
+
+.btn-ghost:hover {
+  background: var(--glass-hover);
+  color: var(--text-main);
+  border-color: var(--accent-neon);
+}
+
+.btn-ghost:active {
+  transform: scale(0.98);
+}
+
+.btn-sm {
+  padding: 4px 8px;
+  font-size: 0.75rem;
+}
+
 .btn-go {
   background: linear-gradient(135deg, var(--accent-primary), var(--accent-secondary));
   color: white;
@@ -368,7 +399,7 @@ body {
 .list-container {
   flex: 1;
   overflow-y: auto;
-  max-height: 340px;
+  /* Eliminar max-height fijo para evitar doble scroll con el contenedor padre .popup si este también limita altura */
   padding-right: 4px;
 }
 

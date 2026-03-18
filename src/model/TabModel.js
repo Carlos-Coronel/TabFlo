@@ -106,6 +106,12 @@ export class TabModel {
   static async clearHistory() {
     await PersistenceManager.remove('history');
   }
+
+  static async deleteHistoryItem(id) {
+    const history = await this.getHistory();
+    const newHistory = history.filter(h => h.id !== id);
+    await PersistenceManager.save('history', newHistory);
+  }
 }
 
 /**

@@ -11,6 +11,9 @@
     
     <div class="quick">
       <input type="text" id="q" placeholder="Buscar procesos, pestañas…" />
+      <button id="openSidepanel" class="btn-ghost" title="Abrir en Panel Lateral">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect width="18" height="18" x="3" y="3" rx="2" ry="2"/><line x1="15" y1="3" x2="15" y2="21"/></svg>
+      </button>
       <button id="openDashboard" class="btn-primary">Dashboard</button>
     </div>
     
@@ -28,6 +31,10 @@
       <span>Ordenar por:</span>
       <button id="sortRam" class="btn-sort active">RAM ↓</button>
       <button id="sortCpu" class="btn-sort">CPU ↓</button>
+      <button id="clearAllGroups" class="btn-ghost btn-sm" style="margin-left:8px;" title="Desagrupar todas las pestañas">
+        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 7V5a2 2 0 0 0-2-2H5a2 2 0 0 0-2 2v2"/><path d="M21 17v2a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-2"/><path d="M15 12H9"/><rect width="18" height="18" x="3" y="3" rx="2"/></svg>
+        Limpiar Grupos
+      </button>
       <label class="toggle" style="margin-left:auto;">
         <input type="checkbox" id="autoGroupDomainTogglePopup" />
         <span style="font-size:12px;">Agrupar por dominio</span>

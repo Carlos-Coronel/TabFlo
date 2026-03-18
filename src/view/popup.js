@@ -134,7 +134,8 @@ function processData() {
       icon: '',
       actions: [],
       relatedTabId: null,
-      relatedExtId: null
+      relatedExtId: null,
+      isDiscarded: false
     };
 
     // Intentar asociar con pestaña o extensión basada en las tareas (tasks)
@@ -146,6 +147,7 @@ function processData() {
           item.subtitle = tab.url || item.subtitle;
           item.icon = sanitizeIconUrl(tab.favIconUrl) || favicon(tab.url);
           item.relatedTabId = tab.id;
+          item.isDiscarded = !!tab.discarded;
           item.actions = ['go', 'discard', 'close'];
           break; // Tomar la primera pestaña principal
         }
@@ -240,6 +242,14 @@ function renderResults() {
     titleEl.className = 'proc-title';
     titleEl.title = item.title || '';
     titleEl.textContent = item.title || '';
+    if (item.isDiscarded) {
+      const leaf = document.createElement('span');
+      leaf.innerHTML = ' 🍃';
+      leaf.title = 'Suspendida';
+      leaf.style.fontSize = '0.75rem';
+      titleEl.appendChild(leaf);
+      row.style.opacity = '0.6';
+    }
     info.appendChild(titleEl);
 
     const subEl = document.createElement('div');
@@ -403,6 +413,23 @@ function drawChart() {
 function bindUI() {
   $('#openDashboard').addEventListener('click', () => {
     chrome.runtime.openOptionsPage();
+  });
+
+  $('#openSidepanel').addEventListener('click', async () => {
+    const [tab] = await chrome.tabs.query({ active: true, lastFocusedWindow: true });
+    if (tab) {
+      await chrome.sidePanel.open({ windowId: tab.windowId });
+      window.close();
+    }
+  });
+
+  $('#clearAllGroups')?.addEventListener('click', async () => {
+    if (confirm('¿Desagrupar todas las pestañas de todas las ventanas?')) {
+      const res = await send('UNGROUP_ALL');
+      if (res?.success) {
+        fetchData();
+      }
+    }
   });
 
   $('#q').addEventListener('input', (e) => {

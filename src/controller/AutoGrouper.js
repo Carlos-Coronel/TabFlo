@@ -406,8 +406,8 @@ export class AutoGrouper {
     const pendingInfos = [];
 
     for (const info of tabInfos) {
-      const tabId = info.tab?.id;
-      const cached = this._embeddingCache.get(tabId);
+      const entityId = info.tab?.id || info.id;
+      const cached = this._embeddingCache.get(entityId);
       if (cached && cached.signature === info.signature) {
         info.embedding = cached.embedding;
       } else {
@@ -424,9 +424,9 @@ export class AutoGrouper {
         const info = chunkInfos[j];
         const vector = vectors[j] || [];
         info.embedding = vector;
-        const tabId = info.tab?.id;
-        if (tabId != null) {
-          this._embeddingCache.set(tabId, { signature: info.signature, embedding: vector });
+        const entityId = info.tab?.id || info.id;
+        if (entityId != null) {
+          this._embeddingCache.set(entityId, { signature: info.signature, embedding: vector });
         }
       }
     }
@@ -887,6 +887,104 @@ export class AutoGrouper {
       const domain = this.extractDomain(tab.url);
       if (domain && exclusions.includes(domain)) continue;
       try { await chrome.tabs.discard(tab.id); } catch {}
+    }
+  }
+
+  async groupBookmarks(bookmarks = null) {
+    // 1. Obtener marcadores si no se proporcionan
+    if (!bookmarks) {
+      const tree = await chrome.bookmarks.getTree();
+      bookmarks = [];
+      const flatten = (nodes) => {
+        for (const node of nodes) {
+          if (node.url) bookmarks.push(node);
+          if (node.children) flatten(node.children);
+        }
+      };
+      flatten(tree);
+    }
+
+    if (bookmarks.length < 2) return;
+
+    // 2. Preparar infos para clustering (simulando tabs para compatibilidad con clusterTabInfos)
+    const infos = bookmarks.map(b => {
+      const domain = this.extractDomain(b.url);
+      return {
+        id: b.id,
+        text: `${b.title} ${domain}`,
+        signature: `${b.title}|${b.url}`,
+        embedding: null,
+        tab: { // Pseudo-tab para compatibilidad con clusterTabInfos
+          id: b.id,
+          title: b.title,
+          url: b.url
+        }
+      };
+    });
+
+    // 3. Obtener embeddings
+    const settings = await ConfigModel.getSettings();
+    const useSemantic = settings.autoGroupBySemanticEnabled;
+
+    if (useSemantic) {
+      try {
+        await this.ensureReady();
+        await this.populateEmbeddings(infos);
+      } catch (e) {
+        Logger.warn('groupBookmarks: falló populateEmbeddings, usando modo léxico.', e);
+      }
+    } else {
+      // Modo léxico forzado si semantic está apagado
+      const texts = infos.map(i => i.text);
+      const vectors = this.lexicalEmbed(texts);
+      infos.forEach((info, idx) => { info.embedding = vectors[idx]; });
+    }
+
+    // 4. Agrupar (reutilizando logic de clustering)
+    const clusters = this.clusterTabInfos(infos);
+    if (clusters.length === 0) return;
+
+    // 5. Aplicar cambios en Chrome Bookmarks
+    // Carpeta raíz en "Otros marcadores" (id: "2")
+    let rootFolderId = "2"; 
+    try {
+      const autoRootName = "Agrupación Automática";
+      const existing = await chrome.bookmarks.getChildren(rootFolderId);
+      let autoRoot = existing.find(f => f.title === autoRootName && !f.url);
+      if (!autoRoot) {
+        autoRoot = await chrome.bookmarks.create({ parentId: rootFolderId, title: autoRootName });
+      }
+      rootFolderId = autoRoot.id;
+    } catch (e) {
+      Logger.error('Error creando/obteniendo carpeta raíz de marcadores:', e);
+    }
+
+    let foldersCreated = 0;
+    for (const cluster of clusters) {
+      // cluster.tabs contiene los objetos info originales
+      if (!cluster.tabs || cluster.tabs.length < this.minClusterSize) continue;
+      
+      try {
+        const folderName = cluster.label;
+        const folder = await chrome.bookmarks.create({ parentId: rootFolderId, title: folderName });
+        foldersCreated++;
+        
+        for (const item of cluster.tabs) {
+          try {
+            await chrome.bookmarks.move(item.id, { parentId: folder.id });
+          } catch (e) {
+            Logger.error(`Error moviendo marcador ${item.id}:`, e);
+          }
+        }
+      } catch (e) {
+        Logger.error('Error procesando cluster de marcadores:', e);
+      }
+    }
+
+    if (foldersCreated > 0) {
+      this.notify?.('Marcadores Organizados', `Se han creado ${foldersCreated} carpetas en "Agrupación Automática".`);
+    } else {
+      this.notify?.('Marcadores', 'No se encontraron grupos suficientemente claros para organizar.');
     }
   }
 

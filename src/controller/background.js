@@ -245,6 +245,21 @@ export class TabController {
         case 'open-dashboard':
           chrome.tabs.create({ url: chrome.runtime.getURL('src/view/dashboard.html') });
           break;
+        case 'open-sidepanel':
+          const [tab] = await chrome.tabs.query({ active: true, lastFocusedWindow: true });
+          if (tab) {
+            chrome.sidePanel.open({ windowId: tab.windowId });
+          }
+          break;
+        case 'clear-all-groups': {
+          const tabs = await chrome.tabs.query({});
+          const groupedTabs = tabs.filter(t => t.groupId !== chrome.tabGroups.TAB_GROUP_ID_NONE);
+          if (groupedTabs.length > 0) {
+            await chrome.tabs.ungroup(groupedTabs.map(t => t.id));
+            this.notify('Grupos limpiados', 'Se han desagrupado todas las pestañas abiertas.');
+          }
+          break;
+        }
         case 'save-session': {
           const tabs = await TabModel.getAllOpenTabs();
           const name = `Sesión ${new Date().toLocaleString()}`;
@@ -569,6 +584,25 @@ export class TabController {
           sendResponse({ success: true, data: session });
           break;
         }
+        case 'UNGROUP_ALL': {
+          try {
+            const tabs = await chrome.tabs.query({});
+            const groupedTabs = tabs.filter(t => t.groupId !== chrome.tabGroups.TAB_GROUP_ID_NONE);
+            if (groupedTabs.length > 0) {
+              await chrome.tabs.ungroup(groupedTabs.map(t => t.id));
+            }
+            sendResponse({ success: true });
+          } catch (e) {
+            sendResponse({ success: false, error: e.message });
+          }
+          break;
+        }
+        case 'AUTO_GROUP_BOOKMARKS': {
+          this.autoGrouper?.groupBookmarks()
+            .then(() => sendResponse({ success: true }))
+            .catch(e => sendResponse({ success: false, error: e.message }));
+          return true; // async
+        }
         case 'DELETE_SESSION': {
           await TabModel.deleteSession(request.id);
           sendResponse({ success: true });
@@ -601,7 +635,33 @@ export class TabController {
         }
         case 'CLEAR_HISTORY': {
           await TabModel.clearHistory();
+          this.broadcastMessage({ action: 'HISTORY_CHANGED', history: [] });
           sendResponse({ success: true });
+          break;
+        }
+        case 'DELETE_HISTORY_ITEM': {
+          await TabModel.deleteHistoryItem(request.id);
+          sendResponse({ success: true });
+          break;
+        }
+        case 'DELETE_CHROME_HISTORY_ITEM': {
+          try {
+            await chrome.history.deleteUrl({ url: request.url });
+            sendResponse({ success: true });
+          } catch (e) {
+            Logger.error('DELETE_CHROME_HISTORY_ITEM error:', e);
+            sendResponse({ success: false, error: String(e) });
+          }
+          break;
+        }
+        case 'CLEAR_CHROME_HISTORY': {
+          try {
+            await chrome.history.deleteAll();
+            sendResponse({ success: true });
+          } catch (e) {
+            Logger.error('CLEAR_CHROME_HISTORY error:', e);
+            sendResponse({ success: false, error: String(e) });
+          }
           break;
         }
         case 'GET_DEBUG': {

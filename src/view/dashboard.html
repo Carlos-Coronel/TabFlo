@@ -126,6 +126,7 @@
           <section id="groups-container">
             <div class="section-header">
               <h2>Grupos de Pestañas</h2>
+              <button id="clearAllGroupsBtnHeader" class="btn-ghost btn-sm" style="margin-left: auto; margin-right: 0.5rem; padding: 2px 8px; font-size: 0.75rem;">Limpiar Todo</button>
               <span class="badge-count" id="groupCount">0 Grupos</span>
             </div>
             <input type="text" id="groupSearchInput" class="group-search-input" placeholder="Buscar en grupos…">
@@ -147,6 +148,7 @@
               <div class="quick-actions" style="margin-left: auto; margin-right: 1rem; display: flex; gap: 0.5rem;">
                 <button id="selectAllBtn" class="btn-ghost" style="padding: 4px 8px; font-size: 0.8rem;">Seleccionar Todo</button>
                 <button id="groupByDomainBtn" class="btn-ghost" style="padding: 4px 8px; font-size: 0.8rem;">Agrupar por Dominio</button>
+                <button id="clearAllGroupsBtn" class="btn-ghost" style="padding: 4px 8px; font-size: 0.8rem;" title="Desagrupar todas las pestañas">Limpiar Grupos</button>
                 <button id="closeDuplicatesBtn" class="btn-ghost" style="padding: 4px 8px; font-size: 0.8rem;">Cerrar Duplicadas</button>
                 <button id="suspendInactiveBtn" class="btn-ghost" style="padding: 4px 8px; font-size: 0.8rem;" title="Libera memoria RAM">Suspender Inactivas</button>
                 <button id="muteOthersBtn" class="btn-ghost" style="padding: 4px 8px; font-size: 0.8rem;" title="Silencia todo excepto la activa">Silenciar Otras</button>
@@ -162,6 +164,19 @@
             <div id="tabsList" class="preview-grid"></div>
           </section>
 
+          <!-- Sección: Marcadores (Bookmarks) -->
+          <section id="bookmarks-container">
+            <div class="section-header">
+              <h2>Marcadores</h2>
+              <div class="quick-actions" style="margin-left:auto; display:flex; gap:8px;">
+                <button id="bookmarksGroupBtn" class="btn-ghost" title="Agrupar automáticamente por tema/dominio">📁 Auto-agrupar</button>
+                <button id="bookmarksSortBtn" class="btn-ghost" title="Auto-ordenar marcadores">🪄 Auto-ordenar</button>
+                <button id="bookmarksRefreshBtn" class="btn-ghost" title="Actualizar">↻ Actualizar</button>
+              </div>
+            </div>
+            <div id="bookmarksList" class="bookmarks-tree"></div>
+          </section>
+
           <!-- Sección nueva: Árbol animado de historial/pestañas -->
           <section id="tree-container">
             <div class="section-header">
@@ -171,6 +186,7 @@
                 <button id="treeExpandAllBtn" class="btn-ghost" title="Expandir todo">＋ Expandir</button>
                 <button id="treeCollapseAllBtn" class="btn-ghost" title="Colapsar todo">－ Colapsar</button>
                 <button id="treeClearLocalBtn" class="btn-ghost" title="Limpiar historial local">🧹 Limpiar Local</button>
+                <button id="treeClearChromeBtn" class="btn-ghost" title="Limpiar historial de Chrome">🗑 Limpiar Chrome</button>
               </div>
             </div>
             <div class="tree-tabs" style="display:none;">

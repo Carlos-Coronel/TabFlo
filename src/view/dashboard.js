@@ -117,6 +117,22 @@ function toDateKey(ts) {
   return `${y}-${m}-${day}`;
 }
 
+function formatDate(dayKey) {
+  const now = new Date();
+  const today = toDateKey(now.getTime());
+  const yesterday = toDateKey(now.getTime() - 86400000);
+  
+  if (dayKey === today) return 'Hoy';
+  if (dayKey === yesterday) return 'Ayer';
+  
+  // Convertir YYYY-MM-DD a DD/MM/YYYY
+  const parts = dayKey.split('-');
+  if (parts.length === 3) {
+    return `${parts[2]}/${parts[1]}/${parts[0]}`;
+  }
+  return dayKey;
+}
+
 function humanTime(ts) {
   const d = new Date(ts);
   return d.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
@@ -332,6 +348,14 @@ function renderTabs() {
     if (tab.active) {
       const indicator = el('span', 'tab-active-indicator');
       header.appendChild(indicator);
+    }
+
+    if (tab.discarded) {
+      const memorySaver = el('span', 'tab-memory-saver');
+      memorySaver.innerHTML = '🍃';
+      memorySaver.title = 'Pestaña suspendida (Ahorro de memoria)';
+      header.appendChild(memorySaver);
+      card.classList.add('tab-discarded');
     }
 
     card.appendChild(header);
@@ -958,6 +982,7 @@ async function loadData() {
   state.groups = groupsRes?.data || [];
   state.history = historyRes?.data || [];
   state.windows = windowsRes?.data || [];
+  state.bookmarks = (await chrome.bookmarks.getTree())[0]?.children || [];
   state.sessions = (await chrome.storage.local.get(['sessions'])).sessions || {};
   // Ventana actual para filtros rápidos
   const focused = state.windows.find(w => w.focused);
@@ -970,6 +995,7 @@ async function loadData() {
   renderTabs();
   renderSessions();
   renderWindows();
+  renderBookmarks();
   await loadTreeData();
   renderTree();
   updateMultiSelectBar();
@@ -1016,6 +1042,19 @@ function bindUI() {
     });
   }
 
+  const clearAllGroupsBtn = $('#clearAllGroupsBtn');
+  const clearAllGroupsBtnHeader = $('#clearAllGroupsBtnHeader');
+  const handleClearGroups = async () => {
+    if (confirm('¿Desagrupar todas las pestañas de todas las ventanas?')) {
+      showToast('Desagrupando...', 'info');
+      const res = await send('UNGROUP_ALL');
+      if (res?.success) { showToast('Pestañas desagrupadas', 'success'); await loadData(); }
+      else showToast('Error al desagrupar', 'error');
+    }
+  };
+  if (clearAllGroupsBtn) clearAllGroupsBtn.addEventListener('click', handleClearGroups);
+  if (clearAllGroupsBtnHeader) clearAllGroupsBtnHeader.addEventListener('click', handleClearGroups);
+
   const closeDuplicatesBtn = $('#closeDuplicatesBtn');
   if (closeDuplicatesBtn) {
     closeDuplicatesBtn.addEventListener('click', async () => {
@@ -1041,7 +1080,43 @@ function bindUI() {
     muteOthersBtn.addEventListener('click', async () => {
       const res = await send('MUTE_OTHERS');
       if (res?.success) showToast(`Silenciadas ${res.data.muted} pestañas en esta ventana`, 'success');
-      else showToast('Error al silenciar', 'error');
+    });
+  }
+
+  // Bookmarks
+  const bookmarksRefreshBtn = $('#bookmarksRefreshBtn');
+  if (bookmarksRefreshBtn) {
+    bookmarksRefreshBtn.addEventListener('click', async () => {
+      showToast('Actualizando marcadores...', 'info');
+      await loadData();
+    });
+  }
+
+  const bookmarksSortBtn = $('#bookmarksSortBtn');
+  if (bookmarksSortBtn) {
+    bookmarksSortBtn.addEventListener('click', async () => {
+      if (confirm('¿Quieres auto-ordenar todos tus marcadores alfabéticamente? (Carpetas primero, luego archivos)')) {
+        showToast('Ordenando marcadores...', 'info');
+        await sortBookmarksRecursive('0');
+        showToast('Marcadores ordenados', 'success');
+        await loadData();
+      }
+    });
+  }
+
+  const bookmarksGroupBtn = $('#bookmarksGroupBtn');
+  if (bookmarksGroupBtn) {
+    bookmarksGroupBtn.addEventListener('click', async () => {
+      if (confirm('¿Quieres agrupar tus marcadores automáticamente por tema y dominio? Se crearán carpetas nuevas.')) {
+        showToast('Analizando y agrupando marcadores...', 'info');
+        const res = await send('AUTO_GROUP_BOOKMARKS');
+        if (res?.success) {
+          showToast('Marcadores agrupados con éxito', 'success');
+          await loadData();
+        } else {
+          showToast('Error: ' + (res?.error || 'Fallo desconocido'), 'error');
+        }
+      }
     });
   }
 
@@ -1315,9 +1390,27 @@ function bindUI() {
   if (treeCollapseAllBtn) treeCollapseAllBtn.addEventListener('click', () => toggleAllTree(false));
   const treeClearLocalBtn = $('#treeClearLocalBtn');
   if (treeClearLocalBtn) treeClearLocalBtn.addEventListener('click', async () => {
-    const res = await send('CLEAR_HISTORY');
-    if (res?.success) { showToast('Historial local limpiado', 'success'); await loadData(); }
-    else showToast('No se pudo limpiar historial local', 'error');
+    if (confirm('¿Limpiar todo el historial local? (El historial de sesiones de Chrome se mantendrá)')) {
+      const res = await send('CLEAR_HISTORY');
+      if (res?.success) { 
+        showToast('Historial local limpiado', 'success'); 
+        await loadData(); 
+      }
+      else showToast('No se pudo limpiar historial local', 'error');
+    }
+  });
+
+  const treeClearChromeBtn = $('#treeClearChromeBtn');
+  if (treeClearChromeBtn) treeClearChromeBtn.addEventListener('click', async () => {
+    if (confirm('¿Limpiar todo el historial de navegación de Chrome? Esta acción NO se puede deshacer.')) {
+      const res = await send('CLEAR_CHROME_HISTORY');
+      if (res?.success) {
+        showToast('Historial de Chrome limpiado', 'success');
+        await loadData();
+      } else {
+        showToast('No se pudo limpiar el historial de Chrome', 'error');
+      }
+    }
   });
 }
 
@@ -1347,6 +1440,131 @@ function makeGroup(title, metaText = '', open = false) {
   return { group, inner };
 }
 
+// ============================================
+// BOOKMARKS RENDERER (ESTILO WINDOWS)
+// ============================================
+function renderBookmarks() {
+  const cont = $('#bookmarksList');
+  if (!cont) return;
+  cont.innerHTML = '';
+
+  if (!state.bookmarks || state.bookmarks.length === 0) {
+    cont.innerHTML = '<div class="tree-empty">No se encontraron marcadores.</div>';
+    return;
+  }
+
+  // Las raíces suelen ser "Barra de marcadores", "Otros marcadores", etc.
+  state.bookmarks.forEach(rootNode => {
+    cont.appendChild(createBookmarkNode(rootNode));
+  });
+}
+
+function createBookmarkNode(node) {
+  const isFolder = !!node.children;
+  const itemEl = el('div', 'bookmark-item');
+  const rowEl = el('div', 'bookmark-row');
+  
+  // Flecha expansión
+  if (isFolder) {
+    const arrow = el('span', 'bookmark-arrow');
+    arrow.textContent = '▶';
+    rowEl.appendChild(arrow);
+  } else {
+    const spacer = el('span', 'bookmark-arrow');
+    rowEl.appendChild(spacer);
+  }
+
+  // Icono (Carpeta o Favicon)
+  if (isFolder) {
+    const folderIcon = el('span', 'bookmark-folder-icon');
+    folderIcon.textContent = '📁';
+    rowEl.appendChild(folderIcon);
+  } else {
+    const fileIcon = el('img', 'bookmark-file-icon');
+    fileIcon.src = sanitizeIconUrl(node.favIconUrl) || favicon(node.url) || 'chrome://favicon/' + node.url;
+    fileIcon.onerror = () => { fileIcon.src = 'icons/icon48.png'; };
+    rowEl.appendChild(fileIcon);
+  }
+
+  // Título
+  const title = el('span', 'bookmark-title');
+  title.textContent = node.title || (isFolder ? 'Carpeta sin título' : 'Marcador sin título');
+  title.title = node.url || '';
+  rowEl.appendChild(title);
+
+  // Acciones (Abrir)
+  const actions = el('div', 'bookmark-actions');
+  const openBtn = el('button', 'bookmark-btn');
+  openBtn.textContent = '↗';
+  openBtn.title = isFolder ? 'Abrir todos' : 'Abrir';
+  openBtn.onclick = (e) => {
+    e.stopPropagation();
+    if (isFolder) {
+      openBookmarksRecursive(node);
+    } else {
+      window.open(node.url, '_blank');
+    }
+  };
+  actions.appendChild(openBtn);
+  rowEl.appendChild(actions);
+
+  itemEl.appendChild(rowEl);
+
+  // Hijos si es carpeta
+  if (isFolder) {
+    const childrenCont = el('div', 'bookmark-children');
+    node.children.forEach(child => {
+      childrenCont.appendChild(createBookmarkNode(child));
+    });
+    itemEl.appendChild(childrenCont);
+
+    // Toggle expansion
+    rowEl.onclick = () => {
+      itemEl.classList.toggle('open');
+      const arrow = rowEl.querySelector('.bookmark-arrow');
+      if (arrow) arrow.textContent = itemEl.classList.contains('open') ? '▼' : '▶';
+    };
+  } else {
+    rowEl.onclick = () => window.open(node.url, '_blank');
+  }
+
+  return itemEl;
+}
+
+function openBookmarksRecursive(node) {
+  if (node.url) {
+    window.open(node.url, '_blank');
+  }
+  if (node.children) {
+    node.children.forEach(openBookmarksRecursive);
+  }
+}
+
+/**
+ * Ordena marcadores recursivamente: primero carpetas, luego archivos, ambos alfabéticamente.
+ */
+async function sortBookmarksRecursive(folderId) {
+  const children = await chrome.bookmarks.getChildren(folderId);
+  if (!children || children.length === 0) return;
+
+  // Separar y ordenar
+  const folders = children.filter(n => !n.url).sort((a, b) => a.title.localeCompare(b.title));
+  const files = children.filter(n => !!n.url).sort((a, b) => a.title.localeCompare(b.title));
+  const sorted = [...folders, ...files];
+
+  // Mover en la API de Chrome (Mover solo si es necesario)
+  for (let i = 0; i < sorted.length; i++) {
+    // Si la posición ha cambiado, movemos
+    // Nota: Mover puede disparar eventos BOOKMARK_CHANGED, cuidado con recursión infinita
+    await chrome.bookmarks.move(sorted[i].id, { parentId: folderId, index: i });
+  }
+
+  // Recursión para subcarpetas
+  for (const f of folders) {
+    await sortBookmarksRecursive(f.id);
+  }
+}
+
 function renderTree() {
   renderTreeByDate();
 }
@@ -1360,7 +1578,7 @@ function renderTreeByDate() {
   const localHistory = state.history || [];
 
   if (recentlyClosed.length === 0 && localHistory.length === 0) {
-    cont.innerHTML = '<div class="tree-empty">Sin datos recientes todavía.</div>';
+    cont.innerHTML = '<div class="tree-empty">Sin datos recientes todavía.<br><small style="color:var(--text-dim); font-size: 0.75rem;">(Solo se muestran cierres locales e historial de Chrome)</small></div>';
     return;
   }
 
@@ -1397,17 +1615,29 @@ function renderTreeByDate() {
   };
 
   recentlyClosed.forEach(it => {
-    const ts = it.lastModified || Date.now();
+    let ts = it.lastModified || Date.now();
+    // Validar escala (ms vs s) para chrome.sessions
+    if (ts < 10000000000) ts *= 1000;
+
     if (it.type === 'tab' && it.tab) {
-      addEntry(ts, { kind: 'tab', ...it.tab });
+      addEntry(ts, { kind: 'tab_chrome', ...it.tab });
     } else if (it.type === 'window' && it.window) {
-      (it.window.tabs || []).forEach(t => addEntry(ts, { kind: 'tab', ...t }));
+      (it.window.tabs || []).forEach(t => addEntry(ts, { kind: 'tab_chrome', ...t }));
     }
   });
 
   localHistory.forEach(h => {
-    const ts = Date.parse(h.closedAt || h.id) || Date.now();
-    addEntry(ts, { kind: 'tab', ...h });
+    // Asegurar que ts sea un número válido de milisegundos. 
+    // Si h.id es un timestamp de Date.now(), Number(h.id) debería funcionar.
+    // Si h.closedAt existe, Date.parse(h.closedAt) es lo ideal.
+    let ts = h.closedAt ? Date.parse(h.closedAt) : (Number(h.id) || Date.now());
+    
+    // Validar que el año no sea 1970 por un timestamp en segundos en lugar de milisegundos
+    if (ts < 10000000000) { // Menos de ~4 meses después de 1970 si son ms, pero > 2020 si son segundos
+       ts *= 1000;
+    }
+    
+    addEntry(ts, { kind: 'tab_local', ...h });
   });
 
   const days = Object.keys(buckets).sort((a, b) => b.localeCompare(a));
@@ -1423,7 +1653,7 @@ function renderTreeByDate() {
     let totalItems = 0;
     domainNames.forEach(d => totalItems += Object.keys(domainsObj[d]).length);
 
-    const { group: dayGroup, inner: dayInner } = makeGroup(`${dayKey}`, `${totalItems} elementos`, dIdx < 2);
+    const { group: dayGroup, inner: dayInner } = makeGroup(formatDate(dayKey), `${totalItems} elementos`, dIdx < 2);
 
     domainNames.forEach((domain) => {
       // Convertir el objeto de items de nuevo a array y ordenar por tiempo descendente
@@ -1481,6 +1711,52 @@ function treeTabNode(t) {
   node.appendChild(img);
   node.appendChild(content);
   node.appendChild(right);
+
+  if (t.kind === 'tab_local') {
+    const del = el('div', 'tree-badge');
+    del.innerHTML = '🗑';
+    del.style.color = '#ef4444';
+    del.title = 'Eliminar del historial (Solo local)';
+    del.addEventListener('click', async (e) => {
+      e.stopPropagation();
+      if (confirm('¿Eliminar esta entrada del historial local?')) {
+        const res = await send('DELETE_HISTORY_ITEM', { id: t.id });
+        if (res?.success) {
+          showToast('Elemento local eliminado', 'success');
+          await loadData();
+        } else {
+          showToast('Error al eliminar', 'error');
+        }
+      }
+    });
+    node.appendChild(del);
+  } else if (t.kind === 'tab_chrome') {
+    const del = el('div', 'tree-badge');
+    del.innerHTML = '🗑';
+    del.style.color = '#ef4444';
+    del.title = 'Eliminar de Chrome (Historial)';
+    del.addEventListener('click', async (e) => {
+      e.stopPropagation();
+      if (confirm('¿Eliminar esta URL del historial de navegación de Chrome?')) {
+        const res = await send('DELETE_CHROME_HISTORY_ITEM', { url: t.url });
+        if (res?.success) {
+          showToast('URL eliminada de Chrome', 'success');
+          await loadData();
+        } else {
+          showToast('Error al eliminar de Chrome', 'error');
+        }
+      }
+    });
+    node.appendChild(del);
+    
+    const badge = el('div', 'tree-badge');
+    badge.textContent = 'Chrome';
+    badge.title = 'Historial de sesiones de Chrome';
+    badge.style.opacity = '0.6';
+    badge.style.fontSize = '0.65rem';
+    node.appendChild(badge);
+  }
+
   return node;
 }
 

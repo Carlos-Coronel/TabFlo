@@ -14,12 +14,17 @@
     "management",
     "bookmarks",
     "offscreen",
-    "scripting"
+    "scripting",
+    "sidePanel",
+    "history"
   ],
   "host_permissions": [
     "http://*/*",
     "https://*/*"
   ],
+  "side_panel": {
+    "default_path": "src/view/dashboard.html"
+  },
   "background": {
     "service_worker": "src/controller/background.js",
     "type": "module"
@@ -38,6 +43,12 @@
   "commands": {
     "open-dashboard": {
       "description": "Abrir el dashboard de TabFlo"
+    },
+    "open-sidepanel": {
+      "description": "Abrir Side Panel de TabFlo"
+    },
+    "clear-all-groups": {
+      "description": "Desagrupar todas las pestañas (Limpiar Grupos)"
     },
     "save-session": {
       "description": "Guardar sesión actual de pestañas"

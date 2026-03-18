@@ -242,6 +242,109 @@ body {
   font-size: 13px;
 }
 
+/* ============================================
+   BOOKMARKS (MARCADORES) - ESTILO WINDOWS
+   ============================================ */
+.bookmarks-tree {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  padding: 8px 4px;
+}
+
+.bookmark-item {
+  display: flex;
+  flex-direction: column;
+  user-select: none;
+}
+
+.bookmark-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 10px;
+  border-radius: var(--radius-xs);
+  cursor: pointer;
+  transition: background var(--transition-fast);
+  color: var(--text-main);
+  font-size: 0.85rem;
+}
+
+.bookmark-row:hover {
+  background: var(--glass-hover);
+}
+
+.bookmark-folder-icon {
+  color: #fbbf24; /* Color carpeta Windows (Amber-400) */
+  font-size: 1.1rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 20px;
+}
+
+.bookmark-file-icon {
+  width: 16px;
+  height: 16px;
+  border-radius: 2px;
+  object-fit: contain;
+}
+
+.bookmark-arrow {
+  font-size: 10px;
+  color: var(--text-dim);
+  transition: transform var(--transition-fast);
+  width: 12px;
+  text-align: center;
+}
+
+.bookmark-item.open > .bookmark-row > .bookmark-arrow {
+  transform: rotate(90deg);
+}
+
+.bookmark-children {
+  display: none;
+  flex-direction: column;
+  padding-left: 20px;
+  border-left: 1px solid var(--glass-border);
+  margin-left: 10px;
+}
+
+.bookmark-item.open > .bookmark-children {
+  display: flex;
+}
+
+.bookmark-title {
+  flex: 1;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.bookmark-actions {
+  display: none;
+  gap: 4px;
+}
+
+.bookmark-row:hover .bookmark-actions {
+  display: flex;
+}
+
+.bookmark-btn {
+  background: transparent;
+  border: none;
+  color: var(--text-dim);
+  cursor: pointer;
+  padding: 2px 4px;
+  border-radius: 4px;
+  font-size: 12px;
+}
+
+.bookmark-btn:hover {
+  background: var(--glass-active);
+  color: var(--text-main);
+}
+
 header h1 {
   font-size: 1.4rem;
   font-weight: 800;
@@ -542,6 +645,24 @@ section h2 {
 
 .preview-card.tab-active .preview-header {
   background: rgba(34, 211, 238, 0.08);
+}
+
+.preview-card.tab-discarded {
+  opacity: 0.75;
+  filter: grayscale(0.4);
+}
+
+.tab-memory-saver {
+  font-size: 0.8rem;
+  margin-left: 6px;
+  cursor: help;
+  animation: float-leaf 3s ease-in-out infinite;
+  display: inline-block;
+}
+
+@keyframes float-leaf {
+  0%, 100% { transform: translateY(0) rotate(0); }
+  50% { transform: translateY(-2px) rotate(10deg); }
 }
 
 .tab-active-indicator {
