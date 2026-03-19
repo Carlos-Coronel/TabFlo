@@ -598,7 +598,7 @@ export class TabController {
           break;
         }
         case 'AUTO_GROUP_BOOKMARKS': {
-          this.autoGrouper?.groupBookmarks()
+          this.autoGrouper?.groupBookmarks(null, request.folderId)
             .then(() => sendResponse({ success: true }))
             .catch(e => sendResponse({ success: false, error: e.message }));
           return true; // async

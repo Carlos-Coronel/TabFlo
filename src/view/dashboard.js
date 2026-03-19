@@ -1482,7 +1482,10 @@ function createBookmarkNode(node) {
   } else {
     const fileIcon = el('img', 'bookmark-file-icon');
     fileIcon.src = sanitizeIconUrl(node.favIconUrl) || favicon(node.url) || 'chrome://favicon/' + node.url;
-    fileIcon.onerror = () => { fileIcon.src = 'icons/icon48.png'; };
+    fileIcon.onerror = () => { 
+      fileIcon.onerror = null; 
+      fileIcon.src = chrome.runtime.getURL('icons/icon48.png'); 
+    };
     rowEl.appendChild(fileIcon);
   }
 
@@ -1494,6 +1497,27 @@ function createBookmarkNode(node) {
 
   // Acciones (Abrir)
   const actions = el('div', 'bookmark-actions');
+
+  if (isFolder) {
+    const groupFolderBtn = el('button', 'bookmark-btn');
+    groupFolderBtn.textContent = '🪄';
+    groupFolderBtn.title = 'Auto-agrupar contenido de esta carpeta';
+    groupFolderBtn.onclick = async (e) => {
+      e.stopPropagation();
+      if (confirm(`¿Quieres agrupar automáticamente los marcadores dentro de "${node.title}"?`)) {
+        showToast('Analizando y agrupando marcadores...', 'info');
+        const res = await send('AUTO_GROUP_BOOKMARKS', { folderId: node.id });
+        if (res?.success) {
+          showToast('Marcadores agrupados con éxito', 'success');
+          await loadData();
+        } else {
+          showToast('Error: ' + (res?.error || 'Fallo desconocido'), 'error');
+        }
+      }
+    };
+    actions.appendChild(groupFolderBtn);
+  }
+
   const openBtn = el('button', 'bookmark-btn');
   openBtn.textContent = '↗';
   openBtn.title = isFolder ? 'Abrir todos' : 'Abrir';

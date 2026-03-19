@@ -890,18 +890,37 @@ export class AutoGrouper {
     }
   }
 
-  async groupBookmarks(bookmarks = null) {
+  async groupBookmarks(bookmarks = null, folderId = null) {
     // 1. Obtener marcadores si no se proporcionan
     if (!bookmarks) {
-      const tree = await chrome.bookmarks.getTree();
-      bookmarks = [];
-      const flatten = (nodes) => {
-        for (const node of nodes) {
-          if (node.url) bookmarks.push(node);
-          if (node.children) flatten(node.children);
+      if (folderId) {
+        try {
+          const nodes = await chrome.bookmarks.getSubTree(folderId);
+          bookmarks = [];
+          const flatten = (items) => {
+            for (const n of items) {
+              if (n.url) bookmarks.push(n);
+              if (n.children) flatten(n.children);
+            }
+          };
+          if (nodes && nodes[0] && nodes[0].children) {
+            flatten(nodes[0].children);
+          }
+        } catch (e) {
+          Logger.error(`Error obteniendo subárbol para carpeta ${folderId}:`, e);
+          return;
         }
-      };
-      flatten(tree);
+      } else {
+        const tree = await chrome.bookmarks.getTree();
+        bookmarks = [];
+        const flatten = (nodes) => {
+          for (const node of nodes) {
+            if (node.url) bookmarks.push(node);
+            if (node.children) flatten(node.children);
+          }
+        };
+        flatten(tree);
+      }
     }
 
     if (bookmarks.length < 2) return;
@@ -945,21 +964,42 @@ export class AutoGrouper {
     if (clusters.length === 0) return;
 
     // 5. Aplicar cambios en Chrome Bookmarks
-    // Carpeta raíz en "Otros marcadores" (id: "2")
-    let rootFolderId = "2"; 
+    // Si folderId está presente, usamos esa carpeta como base para la "Agrupación Automática"
+    // de lo contrario usamos "Otros marcadores" (id: "2")
+    let rootFolderId = folderId || "2"; 
     try {
       const autoRootName = "Agrupación Automática";
-      const existing = await chrome.bookmarks.getChildren(rootFolderId);
-      let autoRoot = existing.find(f => f.title === autoRootName && !f.url);
+      let autoRoot;
+      try {
+        const existing = await chrome.bookmarks.getChildren(rootFolderId);
+        autoRoot = existing.find(f => f.title === autoRootName && !f.url);
+      } catch (e) {
+        Logger.warn('No se pudo leer hijos de rootFolderId, buscando en todo el árbol.', e);
+        const fullTree = await chrome.bookmarks.getTree();
+        const findInNodes = (nodes) => {
+          for (const n of nodes) {
+            if (n.title === autoRootName && !n.url) return n;
+            if (n.children) {
+              const found = findInNodes(n.children);
+              if (found) return found;
+            }
+          }
+          return null;
+        };
+        autoRoot = findInNodes(fullTree);
+      }
+
       if (!autoRoot) {
         autoRoot = await chrome.bookmarks.create({ parentId: rootFolderId, title: autoRootName });
       }
       rootFolderId = autoRoot.id;
     } catch (e) {
       Logger.error('Error creando/obteniendo carpeta raíz de marcadores:', e);
+      // Fallback a la carpeta original o "Otros marcadores"
     }
 
     let foldersCreated = 0;
+    Logger.debug(`Procesando ${clusters.length} clusters para marcadores.`);
     for (const cluster of clusters) {
       // cluster.tabs contiene los objetos info originales
       if (!cluster.tabs || cluster.tabs.length < this.minClusterSize) continue;
